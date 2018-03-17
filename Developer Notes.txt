@@ -1,0 +1,99 @@
+Ingenico ePayments - Programming Assignment 1: Transfer Service.
+
+Author: Corey Gregson
+Date: 17/03/2018
+
+
+Time Spent:
+-----------
+* Design / Technologies - 1 hour.
+* Coding: 5 hours.
+* Testing / Debugging 5 hours (Including writing test cases).
+* Documentation 2 hours.
+* Total Time: 13 hours.  I was more concerned with providing a good solution rather than a quickly developed solution.
+
+Solution Overview:
+------------------
+Assumptions:
+* The highest priority in a payments system must be correctness, the system must not be able to create or lose money.  Secondarily to this, the system must be performant and be able to scale.
+* The service should operate transactionally, if any part of a request fails, none of the request should execute.
+* If a call fails, the client should be notified.
+* The service should not block new incoming calls while processing existing requests.
+* The service should not block the client while a request is being executed.  Futures or Callbacks will be required.
+* The majority of the usage of the service should be valid and not throw exceptions. Based on this, exceptions will be used to represent errors in the service as they will only add overhead when an invalid request is sent.
+
+Decsions:
+* I chose not to do a configuration file for the Port and thread running settings.  In a real system, this would be included.  I can implement a configuration file I promise.
+* I chose not to include logging, but in a real system, this could be included or run in a seperate service. I can also implement logging systems.
+* I chose to have a simple DAO which just stored the data in memory.  In a real system, the data store would likely need to be highly scaleable and distributed to handle high volumes of requests and ACID based, running on a container 
+
+system such as Docker.
+* I chose to create a Spring service as Spring would be able to handle much of the infrastructure and configuration via annotations. I believe the development time is shorter and usability is higher than for SOAP based systems.
+* REST was chosen as that deign model would allow the requirements to be modeled correctly and easily.
+* I chose JSON for the request and response parameters as it is a less verbose format than XML.
+* I have only included methods to satisfy the requirements and to be able to validate that the account balances are (or are not) being updated correctly. A complete sytem would need to expose other functionality.
+* Rather than relying only on the @Transactional infrastructure of Spring, the code is written so that tasks which may cause an error are executed first and the request is stopped as soon as possible.
+* I have added complete Integration tests for all valid and invalid inputs for all methods.
+* I have added complete Unit tests for all the service layer for all valid and invalid inputs for all methods.
+* I did not add Unit Tests for the DAO directly as the amount of functionality was limited and covered by the previous tests.
+* In a production system, you would want to save the account holder infromation in a separate store than the balances.
+
+Issues with the service:
+* Currently all exceptions are returned as IllegalArgumentException, which is not ideal. I originally had various custom exception types, but was unable to return non-default exceptions to the client correctly. It would be better to 
+
+have a clearer exception system.
+
+
+Application Requirements:
+-------------------------
+Maven 3.0 will be required to build the application.
+
+
+Building the Application:
+-------------------------
+The application can be built (and tested) by browsing to the "transfer-service" directory in a command window and running the following command: "mvn package clean"
+
+
+Running the Application:
+------------------------
+The application can be run by browsing to the "transfer-service" directory in a command window and running the following command: "mvn spring-boot:run"
+
+Once running, the application will run on the default port of "8080".  The following endpoints are available:
+1 - http://localhost:8080/transfer_service/open_account
+* This method opens an account and is the only input of money into the system.
+* The method will throw an IllegalArgumentException if the an account is attempted to be opened with a negative balance.
+* This method needs to be called for an account before other calls will work correctly with this account number.
+* This method expects the following request parameter JSON object:
+NewAccount.java, JSON Example:
+{
+	"accountHolder":
+	{
+		"firstName":"Test", 
+		"middleName":"Account", 
+		"surname":Example"
+	}, 
+	"initialDeposit":100.00
+}
+
+Return: This method returns a JSON representation of the Account Number which was opened (Long).
+
+2 - http://localhost:8080/transfer_service/accounts/{accountNumber}/check_balance
+* This method has no Request Parameter, only the path parameter "accountNumber" (Long).
+* This method will return the balance of the account {accountNumber}.
+* This method will need an account to exist before it is called for it not to error.
+
+Return: This method returns a JSON representation of the balance of the account which was opened (Double).
+
+3 - http://localhost:8080/transfer_service/transfer_money
+* This method will transfer money "transactionValue" (Double) from the account with the account number "fromAccountNumber" (Long) to the account with the account number "toAccountNumber".
+* The method will throw an IllegalArgumentException if the from account or to account do not exist.
+* The method will throw an IllegalArgumentException if the transaction would result in an overdrawn account balance.
+* This method expects the following request Parameter JSON object:
+Transfer.java, JSON Example:
+{
+	"toAccountNumber":123456789, 
+	"fromAccountNumber":987654321, 
+	"transactionValue":1234.56
+}
+
+Return: Void
